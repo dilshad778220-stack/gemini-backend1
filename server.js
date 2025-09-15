@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -58,24 +57,17 @@ app.post("/api/gemini", async (req, res) => {
     const { uid, prompt } = req.body;
     if (!prompt) return res.status(400).json({ success: false, reply: "Prompt is required" });
 
-    // Save user message
     await saveChat(uid, "user", prompt);
 
-    // Check demo mode
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === "demo-key") {
       const demoReply = `I'm Gemini AI! You said: "${prompt}". Set GEMINI_API_KEY in .env for real responses.`;
       await saveChat(uid, "assistant", demoReply);
       return res.json({ success: true, reply: demoReply });
     }
 
-    // Call Gemini 2.5 Pro model
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-pro",
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-      },
+      generationConfig: { temperature: 0.7, topK: 40, topP: 0.95 },
     });
 
     let text;
@@ -93,9 +85,7 @@ app.post("/api/gemini", async (req, res) => {
 
     if (!text) text = "Gemini API is currently busy. Please try again later.";
 
-    // Save AI reply
     await saveChat(uid, "assistant", text);
-
     res.json({ success: true, reply: text });
   } catch (err) {
     console.error("❌ Gemini API Error:", err);
