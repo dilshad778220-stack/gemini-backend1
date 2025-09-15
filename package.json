@@ -1,0 +1,21 @@
+{
+  "name": "gemini-backend",
+  "version": "1.0.0",
+  "description": "Gemini 2.5 Pro AI backend with Firebase chat history",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["gemini", "firebase", "chatbot", "ai"],
+  "author": "Dilshad Alam",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "firebase-admin": "^13.5.0"
+  }
+}

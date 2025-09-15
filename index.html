@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TutorUp AI Chat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      padding-top: 50px;
+    }
+    .container {
+      width: 400px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    #chatBox {
+      height: 300px;
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .message {
+      margin: 5px 0;
+      padding: 5px 10px;
+      border-radius: 5px;
+      word-wrap: break-word;
+    }
+    .user { background: #d1e7dd; text-align: right; }
+    .assistant { background: #f8d7da; text-align: left; }
+    input { width: calc(100% - 20px); padding: 8px; margin-bottom: 5px; }
+    button { padding: 8px 12px; margin-right: 5px; }
+  </style>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>TutorUp AI Chat</h1>
+
+    <!-- Auth -->
+    <div id="auth">
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Password">
+      <button id="loginBtn">Login</button>
+      <button id="signupBtn">Sign Up</button>
+    </div>
+
+    <!-- Chat -->
+    <div id="chatContainer" style="display:none;">
+      <div id="chatBox"></div>
+      <input type="text" id="userInput" placeholder="Ask me anything...">
+      <button id="sendBtn">Send</button>
+      <button id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <script>
+    // --- Firebase Config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyB7t1epo6Vsi-zhjmFoYEkznUfmAoxfRyY",
+      authDomain: "tutorup-dilshad.firebaseapp.com",
+      databaseURL: "https://tutorup-dilshad-default-rtdb.firebaseio.com",
+      projectId: "tutorup-dilshad",
+      storageBucket: "tutorup-dilshad.firebasestorage.app",
+      messagingSenderId: "845385268581",
+      appId: "1:845385268581:web:8af0729bd46012dc3a758c",
+      measurementId: "G-XQE1WF1V63"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // --- Elements ---
+    const authDiv = document.getElementById("auth");
+    const chatDiv = document.getElementById("chatContainer");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const signupBtn = document.getElementById("signupBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const chatBox = document.getElementById("chatBox");
+    const userInput = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    let currentUser = null;
+
+    // --- Auth ---
+    loginBtn.addEventListener("click", async () => {
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value);
+        currentUser = userCredential.user;
+        initChat();
+      } catch (err) { alert(err.message); }
+    });
+
+    signupBtn.addEventListener("click", async () => {
+      try {
+        const userCredential = await auth.createUserWithEmailAndPassword(emailInput.value, passwordInput.value);
+        currentUser = userCredential.user;
+        initChat();
+      } catch (err) { alert(err.message); }
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      await auth.signOut();
+      currentUser = null;
+      authDiv.style.display = "block";
+      chatDiv.style.display = "none";
+      chatBox.innerHTML = "";
+    });
+
+    // --- Initialize Chat ---
+    function initChat() {
+      authDiv.style.display = "none";
+      chatDiv.style.display = "block";
+      loadHistory();
+    }
+
+    // --- Load Chat History ---
+    async function loadHistory() {
+      if (!currentUser) return;
+      chatBox.innerHTML = "";
+      try {
+        const res = await fetch(`http://localhost:5000/api/history/${currentUser.uid}`);
+        const data = await res.json();
+        if (data.success) {
+          data.history.forEach(msg => appendMessage(msg.role, msg.text));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // --- Append Message ---
+    function appendMessage(role, text) {
+      const div = document.createElement("div");
+      div.classList.add("message", role === "user" ? "user" : "assistant");
+      div.innerText = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // --- Send Message ---
+    sendBtn.addEventListener("click", async () => {
+      const text = userInput.value.trim();
+      if (!text || !currentUser) return;
+      appendMessage("user", text);
+      userInput.value = "";
+
+      try {
+        const res = await fetch("http://localhost:5000/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid: currentUser.uid, prompt: text }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          appendMessage("assistant", data.reply);
+        } else {
+          appendMessage("assistant", "Error: " + data.reply);
+        }
+      } catch (err) {
+        appendMessage("assistant", "Error connecting to server.");
+      }
+    });
+  </script>
+</body>
+</html>
